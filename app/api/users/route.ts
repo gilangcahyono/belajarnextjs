@@ -1,20 +1,42 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaClient";
-import * as z from "zod";
-import bcrypt from "bcryptjs";
+import { Prisma } from "@/generated/prisma";
+import jwt from "jsonwebtoken";
 
-const salt = bcrypt.genSaltSync(10);
-
-const userSchema = z.object({
-  name: z.string().min(1),
-  email: z.email(),
-  password: z.string().min(5),
-});
-
-export const GET = async () => {
-  const users = await prisma.user.findMany();
-
+export const GET = async (request: NextRequest) => {
   try {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { ok: false, message: "Unauthorized - No token" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const secretKey: string | undefined = process.env.JWT_SECRET;
+    if (!secretKey) throw new Error("JWT secret is not defined");
+
+    const decoded = jwt.verify(token, secretKey);
+    if (!decoded) {
+      return NextResponse.json(
+        { ok: false, message: "Unauthorized - Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
     if (!users) {
       return NextResponse.json(
         {
@@ -32,58 +54,29 @@ export const GET = async () => {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      {
-        ok: false,
-        message: process.env.APP_ENV ? error.message : "Internal Server Error",
-      },
-      { status: 500 }
-    );
-  }
-};
-
-export const POST = async (request: Request) => {
-  try {
-    const body = await request.json();
-    const result = userSchema.safeParse(body);
-
-    if (!result.success) {
+    if (
+      error instanceof Error ||
+      error instanceof Prisma.PrismaClientKnownRequestError
+    ) {
       return NextResponse.json(
-        { errors: result.error.flatten().fieldErrors },
-        { status: 400 }
+        {
+          ok: false,
+          message: process.env.APP_ENV
+            ? error.message
+            : "Internal Server Error",
+        },
+        { status: 500 }
+      );
+    } else {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Unexpected error occurred",
+        },
+        { status: 500 }
       );
     }
-
-    type User = z.infer<typeof userSchema>;
-
-    const payload: User = {
-      name: result.data?.name,
-      email: result.data.email,
-      password: bcrypt.hashSync(result.data.password, salt),
-    };
-
-    const user = await prisma.user.create({
-      data: payload,
-    });
-
-    return NextResponse.json(
-      {
-        ok: true,
-        message: "User created successfully",
-        data: user,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error(error);
-    return NextResponse.json(
-      {
-        ok: false,
-        message: process.env.APP_ENV ? error.message : "Internal Server Error",
-      },
-      { status: 500 }
-    );
   }
 };
