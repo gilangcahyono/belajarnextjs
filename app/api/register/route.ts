@@ -2,17 +2,30 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prismaClient";
 import * as z from "zod";
 import bcrypt from "bcryptjs";
-import { Prisma } from "@/generated/prisma";
+import { getUserByEmail } from "@/lib/user";
 
 const salt = bcrypt.genSaltSync(10);
 
-const userSchema = z.object({
-  name: z.string().min(1),
-  email: z.email(),
-  password: z.string().min(5),
-});
-
-type User = z.infer<typeof userSchema>;
+const userSchema = z
+  .object({
+    name: z
+      .string("Name must be a string")
+      .nonempty("Name is required")
+      .max(50, "Name must be at most 50 characters"),
+    email: z.string().nonempty("Email is required").email("Invalid email"),
+    password: z
+      .string("Password must be a string")
+      .nonempty("Password is required")
+      .min(5, "Password must be at least 5 characters"),
+    confirmPassword: z
+      .string("Confirm Password must be a string")
+      .nonempty("Confirm Password is required")
+      .min(5, "Confirm Password must be at least 5 characters"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export const POST = async (request: Request) => {
   try {
@@ -20,60 +33,70 @@ export const POST = async (request: Request) => {
     const result = userSchema.safeParse(body);
 
     if (!result.success) {
+      const formatError = result.error.format();
+
       return NextResponse.json(
-        { errors: result.error.flatten().fieldErrors },
+        {
+          ok: false,
+          message: "Validation error",
+          data: null,
+          errors: {
+            name: formatError.name?._errors?.[0],
+            email: formatError.email?._errors?.[0],
+            password: formatError.password?._errors?.[0],
+            confirmPassword: formatError.confirmPassword?._errors?.[0],
+          },
+        },
         { status: 400 }
       );
     }
 
-    const payload: User = {
-      name: result.data?.name,
+    const payload = {
+      name: result.data.name,
       email: result.data.email,
       password: bcrypt.hashSync(result.data.password, salt),
     };
 
-    const user = await prisma.user.create({
+    const existingUser = await getUserByEmail(payload.email);
+
+    if (existingUser) {
+      return NextResponse.json(
+        { ok: false, message: "User already exists" },
+        { status: 409 }
+      );
+    }
+
+    const createdUser = await prisma.user.create({
       data: payload,
     });
 
-    const userRes = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+    const user = {
+      id: createdUser.id,
+      name: createdUser.name,
+      email: createdUser.email,
+      createdAt: createdUser.createdAt,
+      updatedAt: createdUser.updatedAt,
     };
 
     return NextResponse.json(
       {
         ok: true,
         message: "User created successfully",
-        data: userRes,
+        data: user,
+        errors: null,
       },
-      { status: 200 }
+      { status: 201 }
     );
   } catch (error) {
-    console.error(error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        return NextResponse.json(
-          {
-            ok: false,
-            message: "User already exists",
-          },
-          { status: 409 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          ok: false,
-          message: process.env.APP_ENV
-            ? error.message
-            : "Internal Server Error",
-        },
-        { status: 500 }
-      );
-    }
+    console.log(error);
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Internal server error",
+        data: null,
+        errors: null,
+      },
+      { status: 500 }
+    );
   }
 };

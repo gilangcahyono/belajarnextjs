@@ -11,10 +11,23 @@ import { cookies } from "next/headers";
 //     .min(5, "Password must be at least 5 characters"),
 // });
 
-export const login = async (prevState: any, formData: FormData) => {
-  const body = {
-    email: formData.get("email"),
-    password: formData.get("password"),
+type State = {
+  error: string | null;
+  values: { email: string; password: string };
+};
+
+type Body = {
+  email: string;
+  password: string;
+};
+
+export const login = async (
+  prevState: State,
+  formData: FormData
+): Promise<State> => {
+  const body: Body = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
   };
 
   try {
@@ -40,8 +53,8 @@ export const login = async (prevState: any, formData: FormData) => {
 
     const data = await res.json();
 
-    if (!data.ok) {
-      return new Error(data.message);
+    if (!res.ok) {
+      throw new Error(data.message);
     }
 
     const cookieStore = await cookies();
@@ -55,26 +68,31 @@ export const login = async (prevState: any, formData: FormData) => {
     });
 
     return {
-      message: {
-        error: data.message,
-        values: {
-          email: body.email,
-          password: body.password,
-        },
+      error: null,
+      values: {
+        email: "",
+        password: "",
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.log(error);
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
     return {
-      message: {
-        error: message,
-        values: {
-          email: body.email,
-          password: body.password,
-        },
+      error: error.message,
+      values: {
+        email: body.email,
+        password: body.password,
       },
     };
+    // const message =
+    //   error instanceof Error ? error.message : "Internal server error";
+    // return {
+    //   message: {
+    //     error: message,
+    //     values: {
+    //       email: body.email,
+    //       password: body.password,
+    //     },
+    //   },
+    // };
   }
 };

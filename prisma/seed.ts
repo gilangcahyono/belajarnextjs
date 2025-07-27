@@ -6,6 +6,11 @@ const salt = bcrypt.genSaltSync(10);
 
 const userData: Prisma.UserCreateInput[] = [
   {
+    name: "Gilang Cahyono",
+    email: "gilang@gmail.com",
+    password: bcrypt.hashSync("1111111", salt),
+  },
+  {
     name: "Edmon Missenden",
     email: "emissenden0@washington.edu",
     password: bcrypt.hashSync("uCI76`jg'#VT", salt),

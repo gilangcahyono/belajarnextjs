@@ -4,8 +4,21 @@ import { login } from "@/actions/login";
 import Link from "next/link";
 import { useActionState } from "react";
 
+type State = {
+  error: string;
+  values: { email: string; password: string };
+};
+
+const initialState: State = {
+  error: "",
+  values: {
+    email: "",
+    password: "",
+  },
+};
+
 const Page = () => {
-  const [state, formAction, pending] = useActionState(login, null);
+  const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
     <main className="w-full h-screen flex flex-col items-center justify-center px-4">
@@ -17,7 +30,9 @@ const Page = () => {
             </h3>
           </div>
         </div>
-        {state && <div className="text-red-600 text-center">{state}</div>}
+        {state.error && (
+          <div className="text-red-600 text-center">{state.error}</div>
+        )}
         <form action={formAction} className="space-y-5">
           <div>
             <label className="font-medium"> Email </label>
@@ -26,8 +41,8 @@ const Page = () => {
               // required
               className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
               name="email"
-              readOnly={pending}
-              // defaultValue={state.}
+              defaultValue={state.values.email}
+              placeholder="Email Address"
             />
           </div>
           <div>
@@ -37,8 +52,7 @@ const Page = () => {
               // required
               className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
               name="password"
-              readOnly={pending}
-              // defaultValue={state.values.password}
+              defaultValue={state.values.password}
             />
           </div>
           <button

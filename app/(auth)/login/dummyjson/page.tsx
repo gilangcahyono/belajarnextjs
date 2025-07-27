@@ -1,33 +1,38 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const Page = () => {
-  const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+  const router = useRouter();
+  const [loading, setLoading] = useState<boolean>();
+  const [error, setError] = useState<string>();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      const body = new FormData(event.currentTarget);
+      const username = body.get("username");
+      const password = body.get("password");
       setLoading(true);
       setError("");
-      const res = await fetch("/api/login", {
+
+      const res = await fetch("https://dummyjson.com/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message);
-      }
-    } catch (error: any) {
+      if (!res.ok) throw new Error(data.message);
+      window.localStorage.setItem("token", data.accessToken);
+      router.push("/login/dummyjson/current");
+    } catch (error) {
       console.log(error);
-      setError(error.message);
+      const message = (error as Error).message;
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -46,30 +51,32 @@ const Page = () => {
         {error && <div className="text-red-600 text-center">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="font-medium"> Email </label>
+            <label className="font-medium"> Username </label>
             <input
-              // type="email"
+              name="username"
+              readOnly={loading}
+              //   onChange={(e) => setUsername(e.target.value)}
               className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
-              onChange={(e) => setEmail(e.target.value)}
-              name="email"
             />
           </div>
           <div>
             <label className="font-medium"> Password </label>
             <input
-              type="password"
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
               name="password"
+              readOnly={loading}
+              //   onChange={(e) => setPassword(e.target.value)}
+              className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full px-4 py-2 text-white font-medium bg-red-600 hover:bg-red-500 active:bg-red-600 rounded-lg duration-150 disabled:cursor-not-allowed"
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Login"}
-          </button>
+          <div>
+            <button
+              type="submit"
+              className="w-full px-4 py-2 text-white font-medium bg-red-600 hover:bg-red-500 active:bg-red-600 rounded-lg duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "Login"}
+            </button>
+          </div>
         </form>
         <p className="text-center">
           Don&apos;t have an account?

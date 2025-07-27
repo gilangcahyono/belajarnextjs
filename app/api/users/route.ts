@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prismaClient";
-import { Prisma } from "@/generated/prisma";
 import jwt from "jsonwebtoken";
 
 export const GET = async (request: NextRequest) => {
@@ -8,7 +7,7 @@ export const GET = async (request: NextRequest) => {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
-        { ok: false, message: "Unauthorized - No token" },
+        { ok: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
@@ -56,27 +55,12 @@ export const GET = async (request: NextRequest) => {
     );
   } catch (error) {
     console.error(error);
-    if (
-      error instanceof Error ||
-      error instanceof Prisma.PrismaClientKnownRequestError
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: process.env.APP_ENV
-            ? error.message
-            : "Internal Server Error",
-        },
-        { status: 500 }
-      );
-    } else {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "Unexpected error occurred",
-        },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Internal Server Error",
+      },
+      { status: 500 }
+    );
   }
 };
