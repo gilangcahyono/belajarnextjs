@@ -1,24 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import Loading from "@/loading";
+import { getToken, removeToken } from "@/utils/token";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const Page = () => {
-  const [token, setToken] = useState<string>();
   const [user, setUser] = useState<User>();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-
-  useEffect(() => {
-    if (token) return;
-    const storedToken = window.localStorage.getItem("token");
-    if (storedToken) {
-      setToken(storedToken);
-    } else {
-      redirect("/login/dummyjson");
-    }
-  }, [token]);
 
   useEffect(() => {
     getCurrentUser();
@@ -26,7 +17,7 @@ const Page = () => {
 
   const getCurrentUser = async () => {
     try {
-      const token = window.localStorage.getItem("token");
+      const token = await getToken();
       const res = await fetch("https://dummyjson.com/auth/me", {
         method: "GET",
         headers: {
@@ -36,9 +27,12 @@ const Page = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+      // for (let index = 0; index < 200000; index++) {
+      //   console.log(index);
+      // }
       setUser(data);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       const message = (error as Error).message;
       setError(message);
     } finally {
@@ -46,146 +40,148 @@ const Page = () => {
     }
   };
 
-  const logout = () => {
-    window.localStorage.removeItem("token");
+  const logout = async () => {
+    await removeToken();
     redirect("/login/dummyjson");
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <Loading />;
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10 font-sans">
-      <div className="flex items-center space-x-6">
-        <img
-          src={`${user?.image}`}
-          alt={`${user?.firstName} ${user?.lastName}`}
-          className="w-32 h-32 rounded-full shadow-md"
-        />
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">
-            {user?.firstName} {user?.lastName}{" "}
-            <span className="text-sm text-gray-500">(@{user?.username})</span>
-            <button
-              type="button"
-              className="ml-2 text-sm text-red-500 cursor-pointer"
-              onClick={logout}
-            >
-              Logout
-            </button>
-          </h2>
-          <p className="text-sm text-gray-500">
-            {user?.company?.title}, {user?.company?.name}
-          </p>
-          <p className="text-sm text-blue-600">{user?.role}</p>
-        </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Personal Info</h3>
-          <p>
-            <strong>Age:</strong> {user?.age}
-          </p>
-          <p>
-            <strong>Gender:</strong> {user?.gender}
-          </p>
-          <p>
-            <strong>Blood Group:</strong> {user?.bloodGroup}
-          </p>
-          <p>
-            <strong>Eye Color:</strong> {user?.eyeColor}
-          </p>
-          <p>
-            <strong>Hair:</strong> {user?.hair.color}, {user?.hair.type}
-          </p>
-          <p>
-            <strong>Birth Date:</strong> {user?.birthDate}
-          </p>
+    <div className="grid place-items-center min-h-screen">
+      <div className="max-w-4xl mx-auto p-6 bg-white font-sans">
+        <div className="flex items-center space-x-6">
+          <img
+            src={`${user?.image}`}
+            alt={`${user?.firstName} ${user?.lastName}`}
+            className="w-32 h-32 rounded-full shadow-md"
+          />
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {user?.firstName} {user?.lastName}{" "}
+              <span className="text-sm text-gray-500">(@{user?.username})</span>
+              <button
+                type="button"
+                className="ml-2 text-sm text-red-500 cursor-pointer"
+                onClick={logout}
+              >
+                Logout
+              </button>
+            </h2>
+            <p className="text-sm text-gray-500">
+              {user?.company?.title}, {user?.company?.name}
+            </p>
+            <p className="text-sm text-blue-600">{user?.role}</p>
+          </div>
         </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Contact</h3>
-          <p>
-            <strong>Email:</strong> {user?.email}
-          </p>
-          <p>
-            <strong>Phone:</strong> {user?.phone}
-          </p>
-          <p>
-            <strong>IP:</strong> {user?.ip}
-          </p>
-          <p>
-            <strong>MAC:</strong> {user?.macAddress}
-          </p>
-          <p>
-            <strong>User Agent:</strong>
-          </p>
-          <p className="text-xs text-gray-500">{user?.userAgent}</p>
-        </div>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Personal Info</h3>
+            <p>
+              <strong>Age:</strong> {user?.age}
+            </p>
+            <p>
+              <strong>Gender:</strong> {user?.gender}
+            </p>
+            <p>
+              <strong>Blood Group:</strong> {user?.bloodGroup}
+            </p>
+            <p>
+              <strong>Eye Color:</strong> {user?.eyeColor}
+            </p>
+            <p>
+              <strong>Hair:</strong> {user?.hair.color}, {user?.hair.type}
+            </p>
+            <p>
+              <strong>Birth Date:</strong> {user?.birthDate}
+            </p>
+          </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Address</h3>
-          <p>
-            <strong>Home:</strong> {user?.address.address}, {user?.address.city}
-            , {user?.address.state} {user?.address.postalCode},{" "}
-            {user?.address.country}
-          </p>
-          <p>
-            <strong>Coordinates:</strong> {user?.address.coordinates.lat},{" "}
-            {user?.address.coordinates.lng}
-          </p>
-        </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Contact</h3>
+            <p>
+              <strong>Email:</strong> {user?.email}
+            </p>
+            <p>
+              <strong>Phone:</strong> {user?.phone}
+            </p>
+            <p>
+              <strong>IP:</strong> {user?.ip}
+            </p>
+            <p>
+              <strong>MAC:</strong> {user?.macAddress}
+            </p>
+            <p>
+              <strong>User Agent:</strong>
+            </p>
+            <p className="text-xs text-gray-500">{user?.userAgent}</p>
+          </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Company</h3>
-          <p>
-            <strong>Department:</strong> {user?.company.department}
-          </p>
-          <p>
-            <strong>Address:</strong> {user?.company.address.address},{" "}
-            {user?.company.address.city}
-          </p>
-          <p>
-            <strong>Coordinates:</strong>{" "}
-            {user?.company.address.coordinates.lat},{" "}
-            {user?.company.address.coordinates.lng}
-          </p>
-        </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Address</h3>
+            <p>
+              <strong>Home:</strong> {user?.address.address},{" "}
+              {user?.address.city}, {user?.address.state}{" "}
+              {user?.address.postalCode}, {user?.address.country}
+            </p>
+            <p>
+              <strong>Coordinates:</strong> {user?.address.coordinates.lat},{" "}
+              {user?.address.coordinates.lng}
+            </p>
+          </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Bank Info</h3>
-          <p>
-            <strong>Card:</strong> {user?.bank.cardNumber}
-          </p>
-          <p>
-            <strong>Expire:</strong> {user?.bank.cardExpire}
-          </p>
-          <p>
-            <strong>Type:</strong> {user?.bank.cardType}
-          </p>
-          <p>
-            <strong>Currency:</strong> {user?.bank.currency}
-          </p>
-          <p>
-            <strong>IBAN:</strong> {user?.bank.iban}
-          </p>
-        </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Company</h3>
+            <p>
+              <strong>Department:</strong> {user?.company.department}
+            </p>
+            <p>
+              <strong>Address:</strong> {user?.company.address.address},{" "}
+              {user?.company.address.city}
+            </p>
+            <p>
+              <strong>Coordinates:</strong>{" "}
+              {user?.company.address.coordinates.lat},{" "}
+              {user?.company.address.coordinates.lng}
+            </p>
+          </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Crypto Wallet</h3>
-          <p>
-            <strong>Coin:</strong> {user?.crypto.coin}
-          </p>
-          <p>
-            <strong>Wallet:</strong>
-          </p>
-          <p className="break-all text-xs text-gray-600">
-            {user?.crypto.wallet}
-          </p>
-          <p>
-            <strong>Network:</strong> {user?.crypto.network}
-          </p>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Bank Info</h3>
+            <p>
+              <strong>Card:</strong> {user?.bank.cardNumber}
+            </p>
+            <p>
+              <strong>Expire:</strong> {user?.bank.cardExpire}
+            </p>
+            <p>
+              <strong>Type:</strong> {user?.bank.cardType}
+            </p>
+            <p>
+              <strong>Currency:</strong> {user?.bank.currency}
+            </p>
+            <p>
+              <strong>IBAN:</strong> {user?.bank.iban}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Crypto Wallet</h3>
+            <p>
+              <strong>Coin:</strong> {user?.crypto.coin}
+            </p>
+            <p>
+              <strong>Wallet:</strong>
+            </p>
+            <p className="break-all text-xs text-gray-600">
+              {user?.crypto.wallet}
+            </p>
+            <p>
+              <strong>Network:</strong> {user?.crypto.network}
+            </p>
+          </div>
         </div>
       </div>
     </div>

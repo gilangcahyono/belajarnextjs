@@ -1,8 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { setToken } from "@/utils/token";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import * as z from "zod";
+
+const loginUserSchema = z.object({
+  username: z
+    .string("Username must be a string")
+    .nonempty("Username is required"),
+  password: z
+    .string("Password must be a string")
+    .nonempty("Password is required")
+    .min(5, "Password must be at least 5 characters"),
+});
 
 const Page = () => {
   const router = useRouter();
@@ -11,12 +23,23 @@ const Page = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const body = new FormData(event.currentTarget);
+    const username = body.get("username");
+    const password = body.get("password");
+    setError("");
+
+    const result = loginUserSchema.safeParse({
+      username,
+      password,
+    });
+
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
+
     try {
-      const body = new FormData(event.currentTarget);
-      const username = body.get("username");
-      const password = body.get("password");
       setLoading(true);
-      setError("");
 
       const res = await fetch("https://dummyjson.com/auth/login", {
         method: "POST",
@@ -25,9 +48,10 @@ const Page = () => {
         },
         body: JSON.stringify({ username, password }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      window.localStorage.setItem("token", data.accessToken);
+      await setToken(data.accessToken);
       router.push("/login/dummyjson/current");
     } catch (error) {
       console.log(error);
@@ -55,7 +79,6 @@ const Page = () => {
             <input
               name="username"
               readOnly={loading}
-              //   onChange={(e) => setUsername(e.target.value)}
               className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
             />
           </div>
@@ -64,7 +87,6 @@ const Page = () => {
             <input
               name="password"
               readOnly={loading}
-              //   onChange={(e) => setPassword(e.target.value)}
               className="w-full mt-2 px-3 py-2 text-gray-500 bg-transparent outline-none border focus:border-red-600 shadow-sm rounded-lg"
             />
           </div>
